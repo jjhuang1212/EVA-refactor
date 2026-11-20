@@ -1,0 +1,54 @@
+﻿#claude偏好：77
+**/*.claude/
+**/CLAUDE.md
+CLAUDE.md
+
+
+# 忽略整个目录（末尾带 / 代表目录）
+**/__pycache__/
+__pycache__/
+.pytest_cache/
+dist/
+build/
+.venv/
+**/*.pyc
+docs/
+.claude/
+file_parsing_reference/
+wechat_code/
+src/task_store/_mock_tasks.sqlite3
+src/task_store/_mock_tasks.sqlite3-shm
+src/task_store/_mock_tasks.sqlite3-wal
+src/file_service/_mock_minio/
+.env
+medias/
+_manual_verify/
+dev-*.ps1
+reference/
+
+# ZCode 本地配置
+.zcodeignore
+
+# IDE 本地配置
+.idea/
+# ZCode 本地配置
+# Qoder 本地配置（settings.local.json 含 MCP 凭据）
+**/.qoder-cn/
+tests/
+pytest.ini
+**/mock_*
+src/out/
+# 排障日志（src/obs），四方写同一个文件，不进版本库
+logs/
+git_commit_msg.md
+
+test_resolve_entity.py
+*.ps1
+
+# 沙箱会话工作目录（运行时产生）
+data/
+logs/
+# 评测：样本可能很大且含租户材料，只有 case.yaml 进库；运行产物不进库
+devtools/eval/out/
+devtools/eval/cases/*/*
+!devtools/eval/cases/*/case.yaml

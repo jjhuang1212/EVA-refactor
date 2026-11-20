@@ -1,0 +1,64 @@
+# 企微客服渠道配置（eva/channels/wecom）。密钥走环境变量：
+# WECOM_CORP_ID、WECOM_KF_SECRET、WECOM_CALLBACK_TOKEN、WECOM_ENCODING_AES_KEY。
+# Redis 走 EVA_REDIS_HOST、EVA_REDIS_PORT、EVA_REDIS_PASSWORD（可空）、EVA_REDIS_DB，开发和测试都先连本机。
+
+api_base: https://qyapi.weixin.qq.com/cgi-bin
+http_timeout_seconds: 5
+media_timeout_seconds: 10
+
+# access_token 提前这么久视为过期，避免临界失效
+token_margin_seconds: 60
+
+# 单条文本消息的字节上限（企微限制 2048）
+text_max_bytes: 2048
+# 一条回复切成超过这么多段文本，就不逐段发了，改发一条短提示加一个 md 文件（每段占一条配额，5 条配额经不起长文）
+max_text_parts: 2
+
+# 用户发消息后允许下发的时限（小时）和条数。用户再发消息则重新计
+window_hours: 48
+quota_per_window: 5
+# 中途先发的文件要给最终回复留的条数（一段文字加一个文件），留不出就并入最终回复一起发
+reserve_for_final: 2
+
+# 企微对收到的媒体的大小限制（MB），只用于提示用户。
+file_limit_mb: 20
+image_limit_mb: 2
+voice_limit_mb: 2
+# 文件超过限制时，企微不给文件消息，而是投递一条文本消息，内容只有文件名。
+# 整条文本是单个"名字.扩展名"且扩展名在这个列表里，就当作超限文件，回复重发提示，不交给模型
+file_extensions: [docx, doc, xlsx, xls, pptx, ppt, pdf, md, txt, csv, png, jpg, jpeg, mp3, m4a, wav, amr, aac, ogg, flac, zip, rar, 7z]
+
+# 用户发这句（整条消息）就换新话题：此前的对话不再参考，记住的偏好保留；不进模型
+reset_command: 新话题
+
+# 一轮处理超过这么久还没结束，就下发一条带“取消任务”按钮的提示（占一条下发配额）
+busy_notice_seconds: 20
+
+# 菜单消息（agent 向用户提问带选项时用）：选项数、起始文本、单个选项文字的字节上限，都是企微的限制。
+# 选项放不进菜单时改发编号文字，不截掉选项
+menu_max_items: 10
+menu_head_max_bytes: 1024
+menu_item_max_bytes: 128
+
+# 回调只是提示，丢了就没人触发拉取。启动时和之后每隔这么久，按游标不带 token 补拉一遍。
+# 企微对不带 token 的 sync_msg 有严格的频率限制，具体数字文档没给，所以取保守值
+reconcile_seconds: 300
+
+# sync_msg 单页条数（企微最大 1000）
+sync_limit: 1000
+
+# 事件队列和消息队列：一次取多少条、空队列阻塞多久、未确认的条目闲置多久后被重新认领
+reserve_count: 10
+block_ms: 5000
+claim_idle_ms: 60000
+
+# 同时处理几个租户的消息（同一租户的消息始终一条一条按顺序处理）；
+# 以及已取出、还没处理完的消息最多留多少条，满了就先不再取
+max_parallel_tenants: 16
+max_queued_messages: 200
+
+# Redis 键前缀。新系统和旧系统共用一个 Redis 时靠它隔开
+key_prefix: eva
+
+listen_host: 127.0.0.1
+listen_port: 1681

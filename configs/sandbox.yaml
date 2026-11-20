@@ -1,0 +1,40 @@
+# 沙箱配置（eva/sandbox）。
+
+# 后端：local = 宿主子进程（开发机，不隔离网络和文件系统）；docker = 一次性容器（服务器）。
+# 切到服务器只改这两行：backend: docker，require_enforcement: full。
+backend: local
+# 要求后端至少达到的隔离程度（full | partial）。后端做不到时启动即报错，不降级。
+require_enforcement: partial
+
+# 会话工作目录的根，相对路径按项目根解析。每个会话一个目录：{work_root}/{tenant_id}/{session_id}
+work_root: data/sandbox
+# 会话目录超过这么久没有运行过就回收；回收检查随运行触发，两次检查至少间隔 reap_interval_seconds
+idle_seconds: 86400
+reap_interval_seconds: 600
+
+# 同时运行的沙箱数上限（宿主与数据库同机，内存有限）
+max_concurrency: 2
+# 单次运行时限
+timeout_seconds: 60
+# stdout 和 stderr 各自的字节上限，超出即终止并报错，不截断
+max_output_bytes: 200000
+# 单次运行允许放进工作目录的输入文件，单个字节上限
+max_input_bytes: 20000000
+# 单次运行新增或修改的文件：个数、单文件字节上限、允许的扩展名（小写，带点）
+max_files: 20
+max_file_bytes: 20000000
+allowed_extensions: [".txt", ".md", ".csv", ".json", ".xlsx", ".docx", ".pptx", ".pdf", ".png", ".jpg", ".svg", ".html", ".py"]
+# 会话工作目录的总字节上限，运行后超出报错（需要模型自己删文件）
+max_workdir_bytes: 200000000
+
+# docker 后端参数（backend 为 docker 时使用）
+docker:
+  bin: docker
+  image: eva-sandbox:latest
+  # 容器运行时。服务器已注册 gVisor（runsc）；留空用 docker 默认
+  runtime: runsc
+  memory_mb: 512
+  cpus: 1
+  pids: 128
+  # 容器内 /tmp 的大小（内存文件系统，计入内存限额）
+  tmpfs_mb: 64

@@ -1,0 +1,65 @@
+# 文件解析配置（eva/parsing，解析在独立的沙箱里跑）。
+
+# 超过这个大小的文件不解析，返回 E2002
+max_file_bytes: 30000000
+
+# 解析专用的沙箱参数，覆盖 sandbox.yaml 里的同名项；其余（后端、工作目录、隔离要求）沿用 sandbox.yaml
+sandbox:
+  # 解析镜像：带 soffice、tesseract，与 run_python 的镜像分开（见 sandbox_image/parse）
+  image: eva-parse:latest
+  memory_mb: 1024
+  # soffice 的临时配置目录在这里，比 run_python 需要的大
+  tmpfs_mb: 256
+  timeout_seconds: 300
+  max_concurrency: 2
+  # 录音转成的标准 wav 每秒 32000 字节，单个产物上限必须容得下 asr.yaml 里 long.max_seconds 对应的 wav（启动时核对）。
+  # 工作目录还要放输入文件和提音量时的临时文件
+  max_file_bytes: 470000000
+  max_workdir_bytes: 1000000000
+
+# 影响解析输出的上限，改动会让所有已缓存的解析结果失效
+limits:
+  # 一个块的字符数上限；乘 4（UTF-8 最坏字节数）必须小于 tools.yaml 的 read_file.page_bytes
+  block_max_chars: 1500
+  # 表格每块最多几行数据，表头每块重复
+  table_rows_per_block: 30
+  # 一份文件最多几个块，超过报 E2002
+  max_blocks: 5000
+  # 一份文件最多 OCR 几张图（扫描页、嵌入的图、图片文件都算一张，相同的图只算一次）；超出的不读，
+  # 在警告里列出位置；0 为关闭 OCR。单张约 3-8 秒，张数乘单张耗时必须小于 sandbox.timeout_seconds
+  ocr_max_images: 20
+  # 嵌入的图短边小于它（像素）不识别：logo、图标、项目符号。会在警告里给出忽略的张数
+  ocr_min_image_pixels: 100
+  # 扫描页渲染成图的分辨率，越高越准越慢
+  ocr_dpi: 200
+  # tesseract 语言包，解析镜像里装了 chi_sim 和 eng
+  ocr_languages: chi_sim+eng
+  # 一份文件里 OCR 没读出文字的图，最多留几张给视觉模型看（照片、图表、流程图）；超出的不看，在警告里列出位置。
+  # 0 为不看。结果文件也占沙箱一个文件名额，所以必须小于 sandbox.yaml 的 max_files
+  vision_max_images: 10
+  # 灰度标准差低于它的图当空白（扫描件的空白页、纯色块），不看也不算 OCR 失败。标准差 0 是纯色，255 是黑白各半
+  vision_blank_stddev: 3
+  # 留给视觉模型的图（png）超过这么多字节就按比例缩小，避免超过视觉接口的单图上限
+  vision_max_image_bytes: 8000000
+  # 图片文件、扫描页的 OCR 平均置信度（0-100）低于它，读出的多半是乱码，当作没读出文字交给视觉模型，不再给 OCR 块；
+  # 视觉额度用完时仍保留 OCR。0 为不按置信度判断。印刷体清晰时 85 以上，实测一张架构图只有 42
+  vision_low_confidence: 60
+
+# 宿主拿到留给视觉模型的图之后怎么问它（模型是 model.yaml 的 vision 角色）
+vision:
+  # 一份文件里同时问几张图
+  concurrency: 4
+  # 一张图的描述最多多少 token
+  max_output_tokens: 800
+
+# 录音转写前的预处理（解析沙箱里用 ffmpeg 转成单声道 16 位 wav），以及转写文字怎么分块
+audio:
+  # 当作录音读取的扩展名；企微语音消息是 amr
+  extensions: [".amr", ".mp3", ".m4a", ".wav", ".aac", ".ogg", ".opus", ".flac", ".wma"]
+  sample_rate: 16000
+  # 太轻的录音先把峰值提到 target_peak_db（dBFS），提升幅度不超过 max_gain_db；峰值低于 silence_peak_db 视为静音
+  target_peak_db: -3
+  max_gain_db: 30
+  silence_peak_db: -55
+  # 转写文字按时长分块：一块最多这么多秒（和 limits.block_max_chars 先到者为准）。块越小，引用的时间段越精确
+  block_max_seconds: 30

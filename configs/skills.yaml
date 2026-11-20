@@ -1,0 +1,14 @@
+# skill 配置（eva/skills）。skill 内容在项目根目录 skills/<名字>/ 下：SKILL.md 加可选的 references/ 和 scripts/。
+
+# 单个 SKILL.md 正文的字节上限。正文由 load_skill 整段返回进模型上下文，不走溢出，所以要控制篇幅
+max_body_bytes: 20000
+# 单个 references/ 下 .md 文件的字节上限。同样整段返回进上下文，不走溢出
+max_reference_bytes: 20000
+# description 的字符数上限。清单每轮都在系统提示里，过长的描述会挤占上下文
+max_description_chars: 1024
+# 每个租户同时生效（active）的租户层 skill 数量上限，补充和租户独有的合计。防止写入失控
+max_tenant_skills: 20
+# 单个 skill 的 scripts/ 下所有文件的总字节上限。这些文件每次 run_python 都会放进工作目录
+max_scripts_bytes: 1000000
+# 比对 skills/ 下文件指纹的最小间隔（秒），变了就重新加载，不用重启服务。进程内共享一次检查，与租户数无关。0 表示每次都查
+check_interval_seconds: 5

@@ -1,0 +1,127 @@
+# 模型调用层配置（eva/model）。密钥只写环境变量名，不写值。
+# 备选只在传输层或可用性失败时启用，语义失败不切；没有第三个模型位。
+primary: qwen3.7-plus
+fallback: deepseek-flash
+# 看图专用的模型：只给 view_image 工具用，不参与主备切换，必须声明 input: image
+vision: qwen3.8-flash
+
+# 价目表版本，写入账本 pricing_version。改任何一项单价都要改它。
+pricing_version: "2026-11-11"
+
+# 每个模型一项，键就是请求里的模型名。厂商差异只写在这里，代码里没有按厂商分支。
+models:
+  qwen-plus:
+    input: [text]
+    # 官方上下文窗口，token。压缩的触发线按主备中较小的那个算
+    context_window: 1000000
+    api_key_env: QWEN_API_KEY
+    base_url_env: QWEN_BASE_URL
+    # 原样转给 SDK 的 extra_body；联网搜索是独立工具，这里不开厂商的搜索开关
+    extra_body:
+      enable_thinking: false
+    # 单价，元/百万 token，来源见 docs/模型价格.md，非思考模式，隐式缓存。
+    # 按本次请求的输入 token 总数分档，整条请求按所在档计价，最后一档不写上限。
+    # 官网写"≤128k"，k 取 1024；128*1024=131072
+    price_tiers:
+      - {up_to_input_tokens: 131072, input_cache_miss: 0.8, input_cache_hit: 0.16, output: 2}
+      - {up_to_input_tokens: 262144, input_cache_miss: 2.4, input_cache_hit: 0.48, output: 20}
+      - {input_cache_miss: 4.8, input_cache_hit: 0.96, output: 48}
+    # usage 里缓存命中 token 数的位置；厂商没有该字段时按 0 命中计费（只会多算，不会少算）
+    cache_hit_path: prompt_tokens_details.cached_tokens
+    # 额度耗尽不一定是 429：HTTP 状态码或 error.code 前缀命中任一项即判额度耗尽，改走备选
+    quota_statuses: []
+    quota_code_prefixes: ["AllocationQuota."]
+    # 上下文溢出的判定：error.code 等于其一，或 error.message 包含其一子串
+    overflow_codes: [context_length_exceeded]
+    overflow_message_markers: ["Range of input length"]
+  qwen3.7-plus:
+    input: [text]
+    context_window: 1000000
+    api_key_env: QWEN_API_KEY
+    base_url_env: QWEN_BASE_URL
+    extra_body:
+      enable_thinking: false
+    # 调用要求思考时（loop.yaml 的 think_first_steps）叠在 extra_body 上
+    thinking_extra_body:
+      enable_thinking: true
+    price_tiers:
+      - {up_to_input_tokens: 262144, input_cache_miss: 2, input_cache_hit: 0.4, output: 8}
+      - {input_cache_miss: 6, input_cache_hit: 1.2, output: 24}
+    cache_hit_path: prompt_tokens_details.cached_tokens
+    quota_statuses: []
+    quota_code_prefixes: ["AllocationQuota."]
+    overflow_codes: [context_length_exceeded]
+    overflow_message_markers: ["Range of input length"]
+  deepseek-flash:
+    input: [text]
+    context_window: 1000000
+    api_key_env: DEEPSEEK_API_KEY
+    base_url_env: DEEPSEEK_BASE_URL
+    # 思考力度钉在 high，不传时服务端会按请求形态升到 max，把输出预算吃光
+    extra_body:
+      reasoning_effort: high
+    # 人民币价，元/百万 token，填空闲时段价；高峰时段按 peak 乘倍数。
+    # 高峰规则不排除法定节假日，节假日工作日按高峰计，只会多算
+    price_tiers:
+      - {input_cache_miss: 1, input_cache_hit: 0.02, output: 4}
+    peak:
+      multiplier: 2
+      isoweekdays: [1, 2, 3, 4, 5]
+      windows: ["09:00-12:00", "14:00-18:00"]
+    cache_hit_path: prompt_cache_hit_tokens
+    quota_statuses: [402]
+    quota_code_prefixes: []
+    overflow_codes: [context_length_exceeded]
+    overflow_message_markers: ["maximum context length"]
+
+  qwen3.8-flash:
+    input: [text, image]
+    # 官方上下文 1M，来源见 docs/模型价格.md；非思考模式，不分档
+    context_window: 1000000
+    api_key_env: QWEN_API_KEY
+    base_url_env: QWEN_BASE_URL
+    extra_body:
+      enable_thinking: false
+    price_tiers:
+      - {input_cache_miss: 0.8, input_cache_hit: 0.1, output: 2.7}
+    cache_hit_path: prompt_tokens_details.cached_tokens
+    quota_statuses: []
+    quota_code_prefixes: ["AllocationQuota."]
+    overflow_codes: [context_length_exceeded]
+    overflow_message_markers: ["Range of input length"]
+
+retry:
+  max_retries: 3            # 瞬时错误同一模型最多重试几次（不含首次）
+  backoff_base_seconds: 1   # 第 n 次重试等 base * 2^(n-1)，再加抖动
+  backoff_jitter_seconds: 0.5
+  max_delay_seconds: 30     # 退避和 Retry-After 的上限
+
+timeout:
+  attempt_seconds: 300      # 单次尝试总超时
+
+# 全进程（所有租户）同时在途的模型请求数，共用一个厂商额度；满了就排队，排队超过时限报 E5007
+concurrency:
+  max_in_flight: 8
+  queue_timeout_seconds: 120
+
+# 进程级熔断：某模型连续失败这么多次后断开，放行探针前一律切备选
+breaker:
+  open_after_consecutive_failures: 5
+  probe_after_seconds: 120
+
+# 预扣金额 = 输入上限估算 + max_output_tokens * 输出单价。没有分词器，输入按"一字符一 token"取上界
+max_output_tokens: 8192
+
+# 模型思考内容记入会话日志的字数上限（超出截掉，事件里另记全长）；0 表示不记录。
+# 思考内容含租户的私有数据，只用于排障，不展示给用户，也不送回模型
+reasoning_max_chars: 10000
+
+# 每次模型尝试（含失败的）把请求元数据、原始回复和完整思考写进对象存储，供回放排障。
+# 记录含租户私有数据；写失败时本次调用抛存储错误，不静默跳过（有洞的记录会误导判断）。开发和测试开，生产按需关
+call_record: true
+
+# 预扣时一张图按这么多 token 算（上界）。图片以 base64 传，按字符数估会把预扣抬高几十倍；结算用厂商返回的真实用量
+image_token_bound: 4096
+
+# 每个租户一天（东八区 0 点重置）的总预算，元。所有会话、所有模型和语音调用合计
+budget_per_day_cny: 20

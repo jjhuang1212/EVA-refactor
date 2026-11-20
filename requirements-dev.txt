@@ -1,0 +1,10 @@
+﻿-r requirements.txt
+
+# 测试
+pytest==8.4.2
+httpx==0.28.1  # 模型调用层测试造传输层故障
+reportlab==5.0.1  # 造 PDF 夹具
+weasyprint==70.0  # report skill 的测试渲染 PDF，需要系统装 pango、cairo 和中文字体
+
+# 手工端到端脚本
+PyMuPDF==1.24.14  # tests/e2e_company/dump_pdf.py

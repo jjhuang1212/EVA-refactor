@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>企微客服模拟器</title>
+<style>
+:root{--bg:#f4f5f7;--panel:#fff;--line:#e3e5e8;--text:#1f2329;--sub:#6b7280;--faint:#727a85;--accent:#2b6cff;--me:#cfe3ff;--bot:#fff;--warn:#b54708;--warn-bg:#fff4e5;--err:#b42318;--err-bg:#fee4e2;--chip:#eef2ff;--r1:6px;--r2:10px;--r3:14px;--mono:ui-monospace,"SF Mono",Consolas,"Cascadia Mono",monospace;--ease:cubic-bezier(.16,1,.3,1)}
+@media (prefers-color-scheme:dark){:root{--bg:#14161a;--panel:#1c1f24;--line:#2d3138;--text:#e6e8eb;--sub:#9aa1ab;--faint:#8a929d;--accent:#6b9bff;--me:#27406e;--bot:#252931;--warn:#f5b97a;--warn-bg:#3a2a14;--err:#fda29b;--err-bg:#3d1b18;--chip:#262d44}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;height:100vh;display:flex;background:var(--bg);color:var(--text);font:14px/1.6 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;min-height:36px;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:var(--r2);padding:6px 14px;cursor:pointer;touch-action:manipulation;transition:transform .12s var(--ease),border-color .12s,background-color .12s}
+button:active{transform:scale(.96)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (hover:hover){button:hover{border-color:var(--accent)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.mono{font-family:var(--mono)}
+aside{width:304px;flex:none;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.side-head{padding:14px 16px 8px}
+.side-head h1{font-size:15px;margin:0 0 10px}
+.wide{width:100%}
+.newp{display:grid;grid-template-rows:0fr;transition:grid-template-rows .16s var(--ease)}
+.newp.open{grid-template-rows:1fr}
+.newp>div{overflow:hidden;min-height:0}
+#newForm{margin-top:10px;padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r2);display:grid;gap:10px}
+.f{display:grid;gap:4px;font-size:12px;color:var(--sub)}
+.f>input{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:var(--r1);padding:8px;font:13px var(--mono);min-width:0}
+.idrow{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:var(--r1);background:var(--panel);overflow:hidden}
+.idrow:focus-within,.f>input:focus{border-color:var(--accent)}
+.idrow input{flex:1;min-width:0;border:0;background:transparent;color:var(--text);padding:8px;font:13px var(--mono)}
+.idrow input:focus-visible{outline:none}
+#pfx{display:flex;align-items:center;padding:0 8px;background:var(--bg);color:var(--faint);font:600 13px var(--mono);border-right:1px solid var(--line);user-select:none}
+.idrow button{min-height:0;border:0;border-left:1px solid var(--line);border-radius:0;font-size:12px;padding:0 10px;color:var(--accent)}
+.hint{margin:0;font-size:12px;color:var(--sub);min-height:19px}
+.hint.bad{color:var(--err)}
+.acts{display:flex;gap:8px}.acts .primary{flex:1}
+.filter{display:flex;gap:6px;flex-wrap:wrap;padding:6px 16px 4px}
+.filter button{min-height:28px;padding:0 10px;border-radius:999px;font-size:12px;color:var(--sub)}
+.filter button[aria-pressed=true]{background:var(--chip);border-color:transparent;color:var(--accent)}
+.list-err{margin:4px 16px;padding:4px 8px;font-size:12px;border-radius:var(--r1);background:var(--err-bg);color:var(--err)}
+#convs{flex:1;overflow:auto;padding:4px 8px 12px;min-height:0}
+.conv{display:grid;gap:1px;width:100%;margin:1px 0;padding:8px 10px;border:0;background:transparent;border-radius:var(--r2);text-align:left}
+.conv.on{background:var(--chip)}
+@media (hover:hover){.conv:not(.on):hover{background:var(--bg);border-color:transparent}}
+.conv .r1{display:flex;align-items:center;gap:6px;min-width:0}
+.conv .id{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:13px var(--mono)}
+.px2{color:var(--faint);font-weight:400}
+.id b{font-weight:600}.conv.unread .id b{color:var(--accent)}
+.conv .t{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.badge{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:#fff;font:600 11px/18px var(--mono);text-align:center}
+.conv .p{color:var(--sub);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.conv .p.old{color:var(--faint)}
+.old-tag{display:inline-block;margin-right:6px;padding:0 6px;border:1px dashed var(--line);border-radius:999px;font-size:11px}
+.conv .m{display:flex;gap:8px;font:11px var(--mono);color:var(--faint);white-space:nowrap;overflow:hidden}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+main{flex:1;display:flex;flex-direction:column;min-width:0}
+#top{padding:10px 20px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;min-height:62px}
+#top .sp{flex:1}
+#who{font:600 15px var(--mono)}#who .px2{font-weight:500}
+.ids{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:3px;font-size:12px;color:var(--sub)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:0 8px;border:1px solid var(--line);border-radius:var(--r1);background:var(--bg);font:12px/22px var(--mono)}
+.chip button{min-height:0;padding:0 6px;border:0;background:transparent;color:var(--accent);font:12px/22px inherit}
+#alertBtn{color:var(--err);border-color:var(--err);display:none}
+#log{flex:1;overflow:auto;padding:20px 24px}
+.row{display:flex;margin:6px 0}.row.user{justify-content:flex-end}
+.bub{max-width:min(680px,78%);padding:8px 12px;border-radius:var(--r3);white-space:pre-wrap;word-break:break-word;background:var(--bot);border:1px solid var(--line)}
+.row.user .bub{background:var(--me);border-color:transparent}
+.bub img{max-width:260px;max-height:260px;border-radius:var(--r2);display:block}
+.file{display:flex;gap:8px;align-items:center}.file b{font-weight:600}
+.menu{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.menu button{font:inherit;text-align:left;padding:6px 10px;border:1px solid var(--line);border-radius:var(--r1);background:var(--panel);color:var(--accent);cursor:pointer}
+.menu button:hover{border-color:var(--accent)}
+.tag{display:inline-block;font-size:11px;padding:0 6px;border-radius:10px;background:var(--warn-bg);color:var(--warn);margin-left:6px}
+.cite{display:inline-block;background:var(--chip);color:var(--accent);border-radius:var(--r1);padding:0 6px;margin:0 1px;cursor:pointer;font-size:12px;line-height:1.7}
+.quote{display:none;margin:4px 0;padding:6px 10px;background:var(--chip);color:var(--text);font-size:12px;border-radius:var(--r1)}
+.quote.open{display:block}
+.trace{margin:0 0 6px 2px;font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums}
+.trace span{margin-right:10px}
+.typing{color:var(--sub);font-size:12px;margin:6px 0}
+#composer{padding:12px 20px 16px;background:var(--panel);border-top:1px solid var(--line)}
+#box{display:flex;gap:8px;align-items:flex-end}
+textarea{flex:1;resize:none;min-height:40px;max-height:160px;border:1px solid var(--line);border-radius:var(--r2);padding:8px 12px;background:var(--bg);color:var(--text);font:inherit}
+.tools{display:flex;gap:14px;align-items:center;margin-top:8px;font-size:12px;color:var(--sub);flex-wrap:wrap}
+.tools label{display:flex;align-items:center;gap:4px;cursor:pointer}
+#drop{position:fixed;inset:0;background:rgba(43,108,255,.12);border:3px dashed var(--accent);display:none;align-items:center;justify-content:center;font-size:20px;color:var(--accent);z-index:9}
+#alerts{position:fixed;right:16px;bottom:16px;width:520px;max-width:calc(100vw - 32px);max-height:50vh;overflow:auto;background:var(--panel);border:1px solid var(--err);border-radius:var(--r2);padding:10px 14px;display:none;font-size:12px;z-index:5}
+#alerts div{padding:4px 0;border-bottom:1px solid var(--line);color:var(--err);word-break:break-all}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:min(560px,calc(100vw - 32px));padding:8px 14px;border-radius:var(--r2);background:var(--err-bg);color:var(--err);border:1px solid var(--err);font-size:13px;z-index:8}
+.empty{color:var(--sub);text-align:center;margin-top:20vh}
+@media (max-width:760px){body{flex-direction:column}aside{width:auto;max-height:46vh;overflow:auto;border-right:0;border-bottom:1px solid var(--line)}#convs{flex:none;overflow:visible}#log{padding:12px}#box{flex-wrap:wrap}textarea{flex-basis:100%}#top{flex-wrap:wrap;padding:10px 12px}}
+</style>
+</head>
+<body>
+<aside aria-label="会话">
+  <div class="side-head">
+    <h1>企微客服模拟器</h1>
+    <button id="newToggle" class="primary wide" aria-expanded="false" aria-controls="newp">＋ 新用户</button>
+    <div class="newp" id="newp"><div id="newInner" inert>
+      <form id="newForm" autocomplete="off">
+        <label class="f">用户 ID
+          <span class="idrow"><span id="pfx" title="前缀固定，无需再填"></span><input id="suffix" placeholder="后缀，留空自动生成" maxlength="120" spellcheck="false" aria-describedby="newMsg"><button type="button" id="rand">随机生成</button></span>
+        </label>
+        <label class="f">客服号<input id="kfIn" spellcheck="false"></label>
+        <p class="hint" id="newMsg" aria-live="polite"></p>
+        <div class="acts"><button class="primary" type="submit">开始对话</button><button type="button" id="newCancel">取消</button></div>
+      </form>
+    </div></div>
+  </div>
+  <div id="filter" class="filter" hidden></div>
+  <div id="listErr" class="list-err" role="status" hidden></div>
+  <div id="convs"></div>
+</aside>
+<main>
+  <div id="top">
+    <div>
+      <div id="who"></div>
+      <div class="ids">
+        <span class="chip" title="同一个用户在不同客服号下是两个租户">客服号 <span id="kfChip"></span></span>
+        <span class="chip" id="tenantChip">租户 <span id="tenantTxt"></span><button id="copyTenant" type="button" aria-label="复制租户编号">复制</button></span>
+        <span>换用户或换客服号都是另一个租户，文件和记忆互不可见</span>
+      </div>
+    </div>
+    <div class="sp"></div>
+    <button id="alertBtn"></button>
+  </div>
+  <div id="log"></div>
+  <div id="composer">
+    <div id="box">
+      <textarea id="text" rows="1" placeholder="输入消息（Enter 发送，Shift+Enter 换行）"></textarea>
+      <button id="attach" title="也可以粘贴或直接拖入文件、图片">附件</button>
+      <button id="rec">录音</button>
+      <button id="send" class="primary">发送</button>
+      <input type="file" id="picker" multiple hidden>
+    </div>
+    <div class="tools">
+      <span>测试开关（只对下一次附件生效）：</span>
+      <label><input type="checkbox" id="hideName">企微不给文件名</label>
+      <label><input type="checkbox" id="oversize">按超限处理</label>
+      <span id="limits"></span>
+    </div>
+  </div>
+</main>
+<div id="drop">松开即发送</div>
+<div id="alerts"></div>
+<div id="toast" role="alert" hidden></div>
+<script>
+const $ = id => document.getElementById(id);
+const CITE = /【([^【】#]+)#([bL])(\d+)(?:-(\d+))?「([^」【】]*)」】|【w(\d+)「([^」【】]*)」】/g;
+const MAX_ID = 128, SUFFIX_OK = /^[A-Za-z0-9_-]*$/;
+let cfg = {}, kf = "", user = "", tenant = "", since = 0, alertsSince = 0, sending = false, boot = "";
+let convItems = [], kfFilter = "", seeded = false;
+const seen = new Map();  // "客服号\n用户" -> 已看到的最后一条编号，列表里的未读靠它算
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+function size(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
+function keyOf(k, u) { return k + "\n" + u; }
+function randomSuffix() { return Array.from(crypto.getRandomValues(new Uint8Array(6)), b => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join(""); }
+function pad(n) { return String(n).padStart(2, "0"); }
+function stamp(d) {
+  const t = new Date();
+  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return d.toDateString() === t.toDateString() ? hm : `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${hm}`;
+}
+let toastTimer = 0;
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 6000);
+}
+function idLabel(u) {  // 前缀淡色、后缀突出
+  const p = cfg.user_prefix || "", f = document.createDocumentFragment();
+  if (p && u.startsWith(p)) f.append(el("span", "px2", p), el("b", "", u.slice(p.length)));
+  else f.append(el("b", "", u));
+  return f;
+}
+
+function withCitations(text) {
+  const frag = document.createDocumentFragment();
+  let last = 0, m;
+  CITE.lastIndex = 0;
+  while ((m = CITE.exec(text))) {
+    frag.append(text.slice(last, m.index));
+    const web = m[6] !== undefined;
+    const where = web ? "" : (m[2] === "b" ? "块" : "行") + m[3] + (m[4] ? "-" + m[4] : "");
+    const chip = el("span", "cite", web ? `网页 w${m[6]}` : `${m[1]} · ${where}`), quote = el("div", "quote", web ? m[7] : m[5]);
+    chip.onclick = () => quote.classList.toggle("open");
+    frag.append(chip, quote);
+    last = m.index + m[0].length;
+  }
+  frag.append(text.slice(last));
+  return frag;
+}
+function fileUrl(item) {
+  if (item.media_id) return "/api/media/" + item.media_id;
+  return item.file_id ? `/api/stored/${item.file_id}?kf=${encodeURIComponent(kf)}&user=${encodeURIComponent(user)}` : "";
+}
+function bubble(item) {
+  const row = el("div", "row " + (item.role === "user" ? "user" : "bot")), b = el("div", "bub");
+  if (item.role === "bot" && item.type === "file") {
+    const f = el("div", "file"), a = el("a", "", item.filename);
+    a.href = fileUrl(item); a.target = "_blank"; a.download = item.filename;
+    const name = el("div"); name.append(a, el("div", "", size(item.bytes)));
+    f.append(el("span", "", "📄"), name); b.append(f);
+  } else if (item.role === "bot") {
+    b.append(withCitations(item.text));
+    if (item.type === "menu") {  // 企微菜单：点一项回调一条文字消息，内容是菜单项文字，带上被点的菜单 ID
+      const m = el("div", "menu");
+      for (const it of item.items) {
+        const btn = el("button", "", it.label); btn.type = "button";
+        btn.onclick = () => { const f = new FormData(); f.append("text", it.label); f.append("menu_id", it.id); post(f); };
+        m.append(btn);
+      }
+      b.append(m);
+    }
+  } else if (item.type === "image" && fileUrl(item)) {
+    const img = el("img"); img.src = fileUrl(item); img.alt = item.filename || "图片"; b.append(img);
+  } else if (item.type === "text") b.textContent = item.text;
+  else {
+    const f = el("div", "file"); f.append(el("span", "", item.type === "image" ? "🖼" : "📄"));
+    const title = el("b", "", item.filename);
+    if (item.oversize) title.append(el("span", "tag", item.type === "file" ? "超限：企微只送来文件名文本" : "超限"));
+    const meta = [size(item.bytes)];
+    if (item.hidden_name) meta.push("企微未给文件名");
+    const name = el("div"); name.append(title, el("div", "", meta.join(" · ")));
+    f.append(name); b.append(f);
+  }
+  row.append(b);
+  return row;
+}
+
+function trace(item) {
+  const t = el("div", "trace");
+  t.append(el("span", "", `${item.steps} 步`), el("span", "", `¥${item.cost}`), el("span", "", `${item.seconds}s`));
+  const steps = (item.model_seconds || []).filter((s) => s != null);
+  if (steps.length) t.append(el("span", "", `模型 ${steps.map((s) => s + "s").join(" + ")}`));
+  const tools = Object.entries(item.tools).map(([k, v]) => `${k}×${v}`).join(" ");
+  if (tools) t.append(el("span", "", tools));
+  if (item.reason !== "completed") t.append(el("span", "", "结束原因：" + item.reason));
+  return t;
+}
+
+function render(items) {
+  const log = $("log"), stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+  if (items.length) log.querySelector(".empty")?.remove();
+  log.querySelector(".typing")?.remove();
+  for (const it of items) { since = it.seq; log.append(it.role === "trace" ? trace(it) : bubble(it)); }
+  if (items.length) seen.set(keyOf(kf, user), since);
+  if (stick) log.scrollTop = log.scrollHeight;
+}
+
+function setTyping(busy) {
+  const log = $("log"), has = log.querySelector(".typing");
+  if (busy && !has) { log.append(el("div", "typing", "小光正在处理…")); log.scrollTop = log.scrollHeight; }
+  if (!busy && has) has.remove();
+}
+const qs = () => `kf=${encodeURIComponent(kf)}&user=${encodeURIComponent(user)}`;
+
+async function poll() {
+  if (!user) return;
+  try {
+    const r = await (await fetch(`/api/poll?${qs()}&since=${since}&alerts=${alertsSince}`)).json();
+    if (boot && boot !== r.boot) {  // 服务重启过：旧编号作废，已有的消息记录也没了
+      boot = r.boot; since = alertsSince = 0; seen.clear();
+      $("alerts").replaceChildren(); $("alertBtn").style.display = "none";
+      await loadHistory();
+      return poll();
+    }
+    boot = r.boot;
+    render(r.items); setTyping(r.busy);
+    if (r.alerts.length) {
+      for (const a of r.alerts) { alertsSince = a.seq; $("alerts").append(el("div", "", a.text)); }
+      $("alertBtn").style.display = "block"; $("alertBtn").textContent = `后台告警 ${alertsSince}`;
+    }
+  } catch (e) { /* 服务暂时不可达，下一轮再试 */ }
+}
+
+function showHeader() {
+  const who = $("who"); who.replaceChildren(idLabel(user));
+  $("kfChip").textContent = kf;
+  const known = convItems.find(c => c.kf === kf && c.user === user);
+  tenant = known?.tenant || "";
+  $("tenantTxt").textContent = tenant ? "…" + tenant.slice(-6) : "发第一条消息后生成";
+  $("tenantChip").title = tenant;
+  $("copyTenant").hidden = !tenant;
+}
+
+function convNode(c) {
+  const key = keyOf(c.kf, c.user), active = c.kf === kf && c.user === user;
+  const unread = !active && c.count > 0 && (c.seq || 0) > (seen.get(key) ?? 0) && c.last_role !== "user";
+  const d = el("button", "conv" + (active ? " on" : "") + (unread ? " unread" : ""));
+  d.type = "button"; d.setAttribute("aria-current", active ? "true" : "false");
+  const r1 = el("span", "r1"), id = el("span", "id"); id.append(idLabel(c.user));
+  r1.append(id);
+  if (c.busy) r1.append(el("span", "dot"));
+  if (unread) r1.append(el("span", "badge", String(Math.min(99, c.seq - (seen.get(key) ?? 0)))));
+  const at = c.count > 0 ? new Date(c.last_ts * 1000) : (c.created_at ? new Date(c.created_at) : null);
+  if (at && !isNaN(at)) r1.append(el("span", "t", stamp(at)));
+  const p = el("span", "p" + (c.count > 0 ? "" : " old"));
+  if (c.count > 0) p.textContent = c.preview; else p.append(el("span", "old-tag", "历史会话"), "重启前建立，点开读取记录");
+  const m = el("span", "m"); m.append(el("span", "", c.kf), el("span", "", c.tenant ? "租户 …" + c.tenant.slice(-6) : "租户 未生成"));
+  d.append(r1, p, m);
+  d.onclick = () => { open(c.kf, c.user); };
+  return d;
+}
+
+function renderFilter() {
+  const kfs = [...new Set(convItems.map(c => c.kf))];
+  if (kfFilter && !kfs.includes(kfFilter)) kfFilter = "";
+  const bar = $("filter"); bar.hidden = kfs.length < 2; bar.replaceChildren();
+  for (const k of ["", ...kfs]) {
+    const b = el("button", "", k || "全部客服号"); b.type = "button"; b.setAttribute("aria-pressed", String(k === kfFilter));
+    b.onclick = () => { kfFilter = k; renderConvs(); };
+    bar.append(b);
+  }
+}
+
+function renderConvs() {
+  renderFilter();
+  const box = $("convs"), keep = box.scrollTop;
+  box.replaceChildren(...convItems.filter(c => !kfFilter || c.kf === kfFilter).map(convNode));
+  box.scrollTop = keep;
+}
+
+async function listConvs() {
+  try {
+    const r = await fetch("/api/conversations"), d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.status);
+    convItems = d.items;
+    if (!seeded) { for (const c of convItems) seen.set(keyOf(c.kf, c.user), c.seq || 0); seeded = true; }
+    $("listErr").hidden = true;
+    renderConvs(); showHeader();
+  } catch (e) { $("listErr").textContent = "会话列表读取失败：" + e.message; $("listErr").hidden = false; }
+}
+async function loadHistory() {
+  const k = kf, u = user, log = $("log");
+  log.replaceChildren(el("div", "empty", "还没有消息，发一条试试"));
+  try {
+    const r = await fetch(`/api/history?kf=${encodeURIComponent(k)}&user=${encodeURIComponent(u)}`);
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || "历史加载失败"); return; }
+    if (u !== user || k !== kf || !d.items.length) return;  // 期间切走了，或没有历史
+    log.replaceChildren(...d.items.map(bubble));
+    log.scrollTop = log.scrollHeight;
+  } catch (e) { toast("历史加载失败：" + e); }
+}
+
+async function open(k, u) {
+  kf = k; user = u; since = 0; tenant = "";
+  location.hash = encodeURIComponent(k) + "/" + encodeURIComponent(u);
+  showHeader(); renderConvs();
+  await loadHistory();
+  poll(); listConvs();
+}
+
+async function post(form) {
+  form.append("kf", kf); form.append("user", user);
+  const r = await fetch("/api/send", { method: "POST", body: form });
+  if (!r.ok) toast((await r.json()).error || "发送失败");
+  poll(); listConvs();
+}
+
+async function sendText() {
+  const t = $("text").value;
+  if (!t.trim() || sending) return;
+  sending = true; $("text").value = ""; autosize();
+  const f = new FormData(); f.append("text", t);
+  try { await post(f); } finally { sending = false; }
+}
+
+async function sendFile(file, kind) {
+  const f = new FormData(); f.append("file", file, file.name);
+  if (kind) f.append("kind", kind);
+  if ($("hideName").checked) f.append("hide_name", "1");
+  if ($("oversize").checked) f.append("oversize", "1");
+  $("hideName").checked = $("oversize").checked = false;
+  await post(f);
+}
+
+function autosize() { const t = $("text"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 160) + "px"; }
+
+// ---- 新建用户：前缀固定，后缀手写或随机 ----
+function setNewOpen(on) {
+  $("newp").classList.toggle("open", on); $("newInner").inert = !on;
+  $("newToggle").setAttribute("aria-expanded", String(on));
+  if (on) { $("kfIn").value = kf || cfg.kf; $("suffix").value = ""; checkNew(); $("suffix").focus(); }
+}
+function suffixError(s) {
+  if (!SUFFIX_OK.test(s)) return "后缀只能含字母、数字、下划线、连字符";
+  if (cfg.user_prefix.length + s.length > MAX_ID) return `用户 ID 不能超过 ${MAX_ID} 个字符`;
+  return "";
+}
+function checkNew() {
+  const s = $("suffix").value.trim(), bad = suffixError(s), h = $("newMsg");
+  h.classList.toggle("bad", !!bad);
+  h.textContent = bad || (s ? `将使用 ${cfg.user_prefix}${s}` : `留空则自动生成，如 ${cfg.user_prefix}${randomSuffix()}`);
+  return !bad;
+}
+$("newToggle").onclick = () => setNewOpen(!$("newp").classList.contains("open"));
+$("newCancel").onclick = () => { setNewOpen(false); $("newToggle").focus(); };
+$("suffix").oninput = checkNew;
+$("rand").onclick = () => { $("suffix").value = randomSuffix(); checkNew(); $("suffix").focus(); };
+$("newForm").onkeydown = e => { if (e.key === "Escape") $("newCancel").click(); };
+$("newForm").onsubmit = e => {
+  e.preventDefault();
+  if (!checkNew()) return;
+  const k = $("kfIn").value.trim();
+  if (!k) { $("newMsg").textContent = "客服号不能为空"; $("newMsg").classList.add("bad"); return; }
+  setNewOpen(false);
+  open(k, cfg.user_prefix + ($("suffix").value.trim() || randomSuffix()));
+};
+$("copyTenant").onclick = async () => {
+  try { await navigator.clipboard.writeText(tenant); $("copyTenant").textContent = "已复制"; }
+  catch (e) { toast("浏览器不允许复制，租户编号：" + tenant); }
+  setTimeout(() => { $("copyTenant").textContent = "复制"; }, 1500);
+};
+$("send").onclick = sendText;
+$("text").oninput = autosize;
+$("text").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); sendText(); } };
+let recorder = null;
+$("rec").onclick = async () => {
+  if (recorder) { recorder.stop(); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { toast("不能使用麦克风（手机需 HTTPS 访问，或浏览器未授权）：" + e.message); return; }
+  const chunks = [], r = recorder = new MediaRecorder(stream);
+  r.ondataavailable = e => chunks.push(e.data);
+  r.onstop = () => {
+    stream.getTracks().forEach(t => t.stop()); recorder = null; $("rec").textContent = "录音";
+    const ext = r.mimeType.includes("mp4") ? "m4a" : "webm";
+    if (chunks.length) sendFile(new File(chunks, "voice." + ext, { type: r.mimeType }), "voice");
+  };
+  r.start(); $("rec").textContent = "停止并发送";
+};
+$("attach").onclick = () => $("picker").click();
+$("picker").onchange = e => { for (const f of e.target.files) sendFile(f); e.target.value = ""; };
+$("alertBtn").onclick = () => { const a = $("alerts"); a.style.display = a.style.display === "block" ? "none" : "block"; };
+$("text").addEventListener("paste", e => { for (const f of e.clipboardData.files) { e.preventDefault(); sendFile(f); } });
+let depth = 0;
+addEventListener("dragenter", e => { e.preventDefault(); depth++; $("drop").style.display = "flex"; });
+addEventListener("dragleave", () => { if (--depth <= 0) { depth = 0; $("drop").style.display = "none"; } });
+addEventListener("dragover", e => e.preventDefault());
+addEventListener("drop", e => { e.preventDefault(); depth = 0; $("drop").style.display = "none"; for (const f of e.dataTransfer.files) sendFile(f); });
+
+(async () => {
+  cfg = await (await fetch("/api/config")).json();
+  $("pfx").textContent = cfg.user_prefix;
+  $("limits").textContent = `企微限制：文件 ${cfg.file_limit_mb}MB，图片 ${cfg.image_limit_mb}MB，超过按企微的行为处理`;
+  const [hk, hu] = location.hash.slice(1).split("/").map(decodeURIComponent);
+  const ok = hk && hu && hu.startsWith(cfg.user_prefix) && !suffixError(hu.slice(cfg.user_prefix.length));
+  await open(ok ? hk : cfg.kf, ok ? hu : cfg.user_prefix + randomSuffix());
+  setInterval(poll, 1000); setInterval(listConvs, 4000);
+})();
+</script>
+</body>
+</html>

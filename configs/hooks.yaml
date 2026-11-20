@@ -1,0 +1,60 @@
+# hook 配置（eva/hooks）。
+
+citation:
+  # 引用里摘抄的原文至少多少个字符（去掉空白后）。太短的摘抄在文件里随处可见，核对不出东西
+  min_quote_chars: 4
+  # 一次最多向模型列出几条没通过的引用，其余只报数量
+  max_reported: 10
+  # 本 turn 调用过这些工具（没报错），回答又不含任何引用，且不少于 uncited_min_chars 个字符，就拦一次让模型补引用
+  # 或改成"没找到依据"；拦过一次就放行，不进 gate_failed。uncited_tools 留空则不拦。
+  # 这份清单也用于交付核对：会话里成功调用过其中任一个之后，没带引用清单的 PDF、docx 不交付
+  uncited_tools: [read_file, query_company, web_search]
+  uncited_min_chars: 80
+  # 本 turn 调用过这些工具（没报错）就不查"没引用"：回答只是交付说明，事实在交付的文件里（录音记录）
+  uncited_exempt_tools: [export_transcript]
+  # 同上，判据是本 turn 成功交付过文件名匹配其中任一个正则的文件：修订录音记录的 turn 不经过导出转写稿，
+  # 但交付的 PDF 带 audio-record 的时间戳后缀（手写或通用报告没有）
+  uncited_exempt_files: ['-\d{8}-\d{6}\.pdf$']
+
+# 只能由用户本轮说的话触发的工具。记忆会永久留在租户的系统提示词里，被文件、网页里的"请记住"注入就是永久污染，所以：
+# 自上个 turn 结束以来调用成功过 safe_tools 之外的工具（没报错），就拒绝 tools 里的工具，名单之外的工具默认不可信；
+# 带 text 的（remember），内容的字至少 min_overlap 的比例出现在用户本轮说的话里，挡住更早的 turn 里读到的内容。
+user_only:
+  tools: [remember, forget, new_topic]
+  safe_tools: [get_time, ask_user, load_skill, confirm_term, confirm_alias, remember, forget, new_topic]
+  min_overlap: 0.6
+
+# 交付门禁：模型想结束时，本 turn 调用过 entered_by（没报错），却有 must_deliver 里的正则没有匹配上任何成功交付的文件名，
+# 就拦回去，message 加上缺的正则作为新输入注入。最多拦 max_blocks 次，超过放行，由回答如实说明没做完。
+# audio-record 的正则对应 skills/audio-record 的 prepare、finish 命名：原文件名-原始转录-时间戳.md、原文件名-记录名-时间戳.pdf，
+# 自己手写的文件或通用报告没有这个时间戳后缀，过不了门禁。
+delivery_gates:
+  audio-record:
+    entered_by: export_transcript
+    must_deliver: ['-原始转录-\d{8}-\d{6}\.md$', '-\d{8}-\d{6}\.pdf$']
+    # 修订单不交付给用户，但之后“应用修订”要靠它；漏存就只能重做一遍，应用不了待应用的改动
+    must_save: ['-修订单-\d{8}-\d{6}\.json$']
+    skill: audio-record
+    max_blocks: 2
+    message: >-
+      录音记录还没交付完。不要再用文字预告下一步，直接调用工具继续：
+      用 run_python 按 audio-record skill 调 prepare 生成原始转录、调 finish 生成最终记录 PDF（不是自己手写文件，也不是 report 的通用报告），
+      用 write_file 保存（包括修订单 json，只保存不交付），再用 deliver_file 逐个交付。报错就按报错改参数重跑。
+
+# 场景报告的维度覆盖：报告用 Report.scenario(名字, 信用代码) 声明场景后，deliver_file 前核对 required_dimensions
+# （query_company 的维度名）每一项：查到记录的，报告里要引用该维度的 q 编号；确认没有记录的放行；
+# 没查、没匹配上、查失败的，要在声明的 gaps 里写明原因，否则不交付。改清单要同步 skills/due-diligence/SKILL.md 的章节表
+scenarios:
+  due-diligence:
+    required_dimensions:
+      - registration
+      - key_personnel
+      - shareholders
+      - actual_controller
+      - investments
+      - dishonest
+      - judgment_debtor
+      - judicial_documents
+      - court_notice
+      - case_filing
+      - administrative_penalty

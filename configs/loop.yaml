@@ -1,0 +1,60 @@
+# agent 循环配置（eva/loop）。
+
+# 一个 turn 最多多少个 step（一次模型调用加它触发的工具）。到了就禁用工具，要求模型用文字总结
+max_steps: 40
+
+# 步数到上限后不马上禁用所有工具：只开放 wrap_up_tools 再跑最多 wrap_up_steps 步，让模型把已经做好的结果保存并交付，
+# 再用文字如实总结。收尾步数也用完仍以 max_steps 结束。wrap_up_steps 为 0 或名单为空就不收尾
+wrap_up_steps: 6
+
+# 模型既没调工具也没给文字时，同一步原样再调几次；空的那次照常写进日志，但不进下一次调用的视图
+empty_max_retries: 1
+wrap_up_tools: [write_file, deliver_file]
+
+# 完成门禁不通过时，把理由注入后让模型继续的最多次数。超过就以 gate_failed 交付
+gate_max_retries: 3
+
+# 同一批里可并行的工具最多同时跑几个
+max_parallel_tools: 4
+
+# 压缩触发线（token）：上下文估算量达到它就整段压缩成摘要。必须小于模型窗口（见 model.yaml）。
+# 窗口再大，历史越长每次调用也越贵越慢，所以用绝对值，不按窗口比例
+compact_trigger_tokens: 150000
+
+# 压缩后保留的最近原文（token），必须小于触发线
+compact_keep_tokens: 30000
+
+# 连续这么多次压缩都失败，压力触发的压缩就不再试（溢出触发的还会试），成功一次清零
+compact_max_failures: 3
+
+# 清旧工具结果的触发线（token），必须小于压缩触发线。清理不调模型，是压缩前便宜的一步
+trim_trigger_tokens: 100000
+
+# 能清掉的旧结果估算不到这么多（token）就不清，免得为一点点空间写事件、破坏缓存前缀
+trim_min_freed_tokens: 20000
+
+# 名单里的工具，最近这几次调用的结果原样保留，更早的才清
+trim_keep_recent: 5
+
+# 旧结果可以被清掉的工具：结果大，需要时能重新取，模型引用时本来就要重新读原文核对
+trim_tools: [read_file, query_company, web_search, proofread]
+
+# 压缩时把本会话加载过的 skill 的当前正文放回视图，所有 skill 正文合计最多这么多字节，放不下的只留名字
+restore_skills_total_bytes: 40000
+
+# 压缩时放回视图的本租户最近文件清单的条数，0 表示不放
+restore_files_max: 20
+
+# 工具的纯文本结果超过这么多字节就存到对象存储，模型只看到首尾预览和取回方式
+spill_threshold_bytes: 20000
+
+# 预览首尾各保留多少字节。两段加说明文字必须小于溢出阈值
+spill_preview_bytes: 2000
+
+# 每个 turn 的前几步让模型思考（需要模型配置了 thinking_extra_body）。0 表示不主动要求
+# 第一步决定怎么规划、加载哪个 skill，后面的步骤多是照着做
+think_first_steps: 1
+
+# 上一步调用了下列任一工具的步骤也要求思考：拿到新指令（load_skill）、新事实（query_company）后要重新判断，
+# 交付文件（deliver_file）后的下一步是最终回答，要对照 skill 的收尾要求。写代码、读文件这类执行步骤不列。空列表表示不启用
+think_after_tools: [load_skill, query_company, deliver_file]

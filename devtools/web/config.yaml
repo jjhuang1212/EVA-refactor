@@ -1,0 +1,22 @@
+# EVA测评系统配置。密码走环境变量 EVA_DEVTOOLS_PASSWORD，没设就拒绝启动。
+
+# 默认只听本机。要给内网用，改成本机内网地址（不要写 0.0.0.0 之外没想清楚的地址，也不要暴露到外网）
+host: 127.0.0.1
+port: 5002
+
+# 登录后多久过期（秒）
+session_ttl_seconds: 28800
+# 同一来源地址在 login_lock_seconds 内连续输错这么多次，就锁定到时间窗结束
+login_max_failures: 5
+login_lock_seconds: 300
+
+# 新建案例时一次请求里上传的总大小上限（MB）
+max_upload_mb: 100
+# 运行记录列表最多返回多少条（按开始时间新的在前）
+results_limit: 200
+# 会话列表最多返回多少条
+sessions_limit: 200
+# 租户列表最多返回多少条
+tenants_limit: 500
+# 人工回答模式下，agent 提问后最多等多久（秒）。超时这次运行判不通过。等待期间评测任务一直占着唯一的评测位
+answer_timeout_seconds: 1800

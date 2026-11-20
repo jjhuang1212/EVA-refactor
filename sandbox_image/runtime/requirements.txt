@@ -1,0 +1,14 @@
+pandas==2.2.3
+numpy==2.1.3
+openpyxl==3.1.5
+xlsxwriter==3.2.0
+python-docx==1.1.2
+python-pptx==1.0.2
+pdfplumber==0.11.4
+matplotlib==3.9.2
+# 报告组件库（skills/report）：PDF 用 weasyprint，字体自检用 pypdf，主题文件用 pyyaml
+weasyprint==70.0
+pypdf==6.19.0
+PyYAML==6.0.1
+# 转写纠错闸门（skills/asr-correction）：按读音比较改前改后
+pypinyin==0.55.0

@@ -1,0 +1,11 @@
+# 会话层配置（eva/session）。
+
+# 预扣超过这么久仍未结算也未释放，就判定留下它的 worker 已死，由清扫补一条 release。
+# 必须明显大于单次模型尝试的总超时（model.yaml 的 timeout.attempt_seconds），否则会误放活着的调用
+stale_hold_seconds: 900
+
+# 清扫周期。进程启动时先清扫一次，之后每隔这么久一次
+sweep_interval_seconds: 300
+
+# 一次清扫最多处理多少条，剩下的下一轮再处理
+sweep_batch: 200

@@ -1,0 +1,67 @@
+# 语音转写配置（eva/model/asr）。密钥和网关地址只写环境变量名：ASR_API_KEY、ASR_BASE_URL。
+# 转写和对话模型一样经模型层调用：记账（asr_seconds + 按 token 的金额）、预算、并发闸、熔断、超时。
+
+# 同步转写的模型；长录音（异步、说话人分离）用同系列的 filetrans 模型，不在这里
+model: qwen-audio-3.1-asr-flash
+api_key_env: ASR_API_KEY
+base_url_env: ASR_BASE_URL
+
+# 单价，元/百万 token，来源 docs/模型价格.md。改任何一项都要改 pricing_version
+pricing_version: "2026-11-asr-1"
+price_cny_per_million_tokens:
+  input: 0.8
+  output: 2.7
+
+# 预扣用的上界：每秒音频最多按多少输入、输出 token 估。实测输入约 12.5 token/秒，输出约 3.3 token/秒，留出余量
+estimate:
+  input_tokens_per_second: 16
+  output_tokens_per_second: 8
+
+# 同步转写能接受的最长音频（秒）。厂商上限 300 秒，超过返回 AUDIO_DURATION_TOO_LONG
+max_seconds: 290
+
+# 厂商把"没识别出任何文字"当成 HTTP 400 返回；这些 error code 按"没有语音内容"处理，不是错误，也不收费
+no_speech_codes: [ASR_RESPONSE_HAVE_NO_WORDS]
+
+# 额度耗尽的判定：HTTP 状态码，或 error code 的前缀
+quota_statuses: [402]
+quota_code_prefixes: [Arrearage, AllocationQuota]
+
+# 超时。读超时后请求可能已经计费，所以读超时不在这里重试；只重试连接失败、429 和 5xx
+timeout:
+  connect_seconds: 10
+  read_seconds: 120
+retry:
+  max_retries: 2
+  backoff_base_seconds: 1
+  max_delay_seconds: 10
+
+# 全进程（所有租户）同时在途的转写请求数，满了排队，排队超时抛可重试的 E5007
+concurrency:
+  max_in_flight: 4
+  queue_timeout_seconds: 120
+
+breaker:
+  open_after_consecutive_failures: 5
+  probe_after_seconds: 120
+
+# 长录音（异步、可说话人分离）。超过 max_seconds 的录音走这条路；价格、额度判定、重试和同步转写共用上面的配置
+long:
+  model: qwen-audio-3.1-asr-flash-filetrans
+  # 能接受的最长录音（秒）。预处理在沙箱里按块流式处理，内存不随时长增长
+  max_seconds: 14400
+  # 说话人分离。不传人数，让厂商自己判；厂商建议开分离时单次提交不超过 2 小时
+  diarization: true
+  # 调用方指定说话人人数时的上限（厂商接受 2 到 100）
+  speaker_count_max: 100
+  # 一次提交的最长音频（秒）；更长的切段，相邻段带 overlap_seconds 的重叠区，用重叠区把各段的说话人编号对齐
+  part_max_seconds: 7200
+  overlap_seconds: 120
+  # 切点在理想位置前后这么多秒内吸附到最长的停顿处，免得把一句话切开；0 为不吸附
+  snap_seconds: 60
+  # 同一份录音的各段最多同时提交几段
+  per_file_parallel: 2
+  # 轮询任务结果。超时后任务已被受理、可能已计费，所以给得宽，超时不自动重投
+  poll_interval_seconds: 5
+  poll_max_wait_seconds: 3600
+  upload_timeout_seconds: 600

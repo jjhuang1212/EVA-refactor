@@ -1,0 +1,24 @@
+# 对象存储（MinIO）配置。地址和密钥走环境变量 MINIO_ENDPOINT、MINIO_ACCESS_KEY、MINIO_SECRET_KEY。
+
+# 单桶，按路径前缀隔离租户（见 docs/新表设计.md）。只用这个桶，不碰其他桶
+bucket: eva
+
+# 是否用 TLS 连接
+secure: false
+
+# 会过期的对象放在 <类别>/ 之下，到天数（按最后写入时间算）后由 MinIO 的生命周期规则删除，规则由 ObjectStore.apply_lifecycle 同步。
+# 原件、交付物（t/<租户>/files/）和评测输入快照（eval_inputs/，被数据库引用）不过期，不在这里。
+# cache/ 是可重建的缓存：过期后读取按"没有缓存"重新生成。
+# diag/ 是排障用的模型调用记录，含租户私有数据，不留久。
+# 内容被引用的类别必须比引用它的长：vision 的图被 parsed 引用，blobs（提示词、工具定义）被 calls 引用
+expire_days:
+  # 工具输出太长时放不进对话，溢出存到这里，只在当次会话里读
+  cache/overflow: 30
+  # 文件解析结果（文档分块、录音转写文字），再读同一份文件时直接用，不用重新解析
+  cache/parsed: 90
+  # 文件里嵌的图，以及视觉模型对图的描述
+  cache/vision: 120
+  # 每次模型调用的请求和回复，出问题时回放排障用
+  diag/calls: 30
+  # 调用记录里引用的系统提示词和工具定义（按内容哈希存，相同的只存一份）
+  diag/blobs: 60

@@ -1,0 +1,26 @@
+﻿# 基础设施与运行
+openai==2.9.0
+requests==2.34.2
+redis==8.1.0
+minio==7.2.20
+pymssql==2.4.4
+PyYAML==6.0.1
+python-dotenv==1.0.1
+python-ulid==4.0.1
+jsonschema==3.2.0
+
+# 渠道（企微回调、模拟器、开发工具的网页）
+Flask==2.1.3
+Werkzeug==2.1.2  # Flask 2.1.3 配 Werkzeug 3 会坏，必须钉在 2.x
+pycryptodome==4.3.0  # 企微回调验签与解密
+
+# 文件解析与音频
+pdfplumber==0.11.10
+pypdf==6.19.0
+python-docx==1.2.0
+python-pptx==1.0.2
+openpyxl==3.1.5
+olefile==0.47
+Pillow==12.3.0
+imageio-ffmpeg==0.6.0  # 自带 ffmpeg，音频转码不依赖宿主机
+pypinyin==0.55.0

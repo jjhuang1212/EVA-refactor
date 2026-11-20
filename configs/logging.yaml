@@ -1,0 +1,18 @@
+# 运行日志配置（eva/common/logs.py，由 eva/app.py 加载）。
+
+# 终端和文件各自的最低级别：DEBUG / INFO / WARNING / ERROR
+console_level: INFO
+file_level: DEBUG
+
+# 日志目录，相对仓库根目录；每个入口各写一个文件（wecom.log、wecom_sim.log、console.log），按天切分
+directory: logs
+
+# 切分后的旧文件保留多少天
+keep_days: 14
+
+# 终端是否带颜色。终端显示出乱码时关掉
+color: true
+
+# 日志里附带的正文预览长度（用户消息、模型回复、工具参数与结果）。0 表示关闭，只记长度。
+# 正文是租户私有数据，只在本机调试时打开
+preview_chars: 200

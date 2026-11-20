@@ -1,0 +1,119 @@
+# 工具配置（eva/tools）。
+
+read_file:
+  # 单次返回的字节上限，必须小于 loop.yaml 的 spill_threshold_bytes（读取工具自己的结果不溢出）
+  page_bytes: 12000
+  # 超过这个大小的文件不读取，返回 E2002
+  max_file_bytes: 5000000
+  # 当作纯文本读取的扩展名（小写，带点）
+  # md 和 Office、PDF 一样走解析器（按标题分块），不在此列
+  text_extensions: [".txt", ".csv"]
+
+deliver_file:
+  # 登记交付的文件超过这个大小就拒绝（防止把过大的对象读进内存）。渠道自己的发送上限另算，在渠道配置里
+  max_file_bytes: 30000000
+
+list_files:
+  # 一次最多列出几份交付过的文件。多了模型和用户都挑不过来，让用户给个文件名或公司再查
+  max_results: 10
+
+view_image:
+  # 超过这个大小的图片不送去识别（base64 后更大，厂商对单张图也有上限）
+  max_file_bytes: 8000000
+  # 模型提的问题的字符数上限
+  max_question_chars: 500
+  # 看图一次回答的输出上限
+  max_output_tokens: 2000
+  # 长边超过这个像素数就等比缩小再送去识别：厂商对单张图的大小和 token 数有上限，
+  # 2048 约合 4000 个 token，和 model.yaml 的 image_token_bound 预扣对得上
+  max_edge: 2048
+
+proofread:
+  # 录音转写的校订：稿子交给模型，每批只做校订这一件事，批内每一块都要给出结果
+  # 切得越碎模型越看不到整场对话，换人说话处的错就越修不好，所以尽量整篇一批
+  # 一批的正文合计不超过这么多字（5800 字的整篇访谈一批就够）；单块更长就它自己一批
+  batch_chars: 6000
+  # 每批前后各附几块上下文，只读不改
+  context_blocks: 2
+  # 同时校订几批
+  concurrency: 4
+  # 一批的输出上限，要大于 batch_chars 对应的 token 数（中文约一字一 token，再加标签和实体）
+  max_output_tokens: 8000
+  # 线索（用户材料摘要、热词、已知公司全称）的字数上限
+  max_hint_chars: 4000
+  # 一次最多重做几块
+  max_redo: 30
+  # 校订输入文件（prepare 写出的 json）的大小上限
+  max_file_bytes: 2000000
+
+web_search:
+  # 引擎：search_std（0.01 元/次）、search_pro（0.03）、search_pro_sogou（0.05）、search_pro_quark（0.05）
+  engine: search_std
+  # 每次调用的单价（元）和对应的账本定价版本；改引擎要同步改单价
+  price_cny_per_call: 0.01
+  pricing_version: "2026-11-10"
+  # 查询词字符数上限，智谱建议不超过 70。超过时由工具报错让模型改短，服务方不会拒绝
+  max_query_chars: 70
+  # 不指定 count 时返回几条；单次最多几条
+  default_results: 5
+  max_results: 10
+  # 每条结果正文保留的字符数，超出截断并注明
+  content_max_chars: 600
+  timeout_seconds: 15
+  # 全进程同时在途的搜索请求数，超出的排队，排队超过 timeout_seconds 报可重试错误
+  max_concurrency: 4
+
+search_hotwords:
+  # 一次最多查几个词；每个词最多返回几条候选
+  max_terms: 20
+  max_per_term: 5
+  # 读音相似度下限（对得上的字数 / 热词字数）。热词只有 2 到 3 个字时等于要求读音完全一致
+  min_similarity: 0.75
+  # 公共热词表在内存里缓存多久（秒）；表由离线脚本维护，变动很少
+  cache_seconds: 600
+
+confirm_term:
+  # 一个租户最多记多少条确认过的写法；新写法超过就拒绝，已有的可以覆盖
+  max_terms_per_tenant: 2000
+  # 写法和"常被听成"各自的字数上限
+  max_term_chars: 64
+
+memory:
+  # 一个租户最多同时记着多少条偏好和纠正，记满要先忘掉不用的；这些条目每个 turn 都附在系统提示词里
+  max_memories_per_tenant: 30
+  # 每条的字数上限（单行），不得超过存储列宽
+  max_memory_chars: 200
+
+qcc:
+  # 企业数据源 QCC（企查查）的 MCP 端点，密钥走环境变量 QCC_API_KEY；每个 server 一条端点、一个会话
+  domain: agent.qcc.com
+  server_path: /mcp/{server}/stream
+  timeout_seconds: 30
+  max_concurrency: 4
+  # 公司名字数上限；出站的是用户说的名字，不让整段话发出去
+  max_name_chars: 64
+  # 单价（元/次），对齐用的搜索和每个维度各一个。数字是 MCP 工具的积分价换算（1 元 = 10 积分，见 docs/企查查接口价格.md），
+  # 改价同步换版本号
+  search_price_cny: 0.10
+  pricing_version: "2026-11-11-mcp"
+  # 企业数据查询结果在公共缓存里保留多久（秒）。QCC 的数据是"当前状态"，更新不频繁；过期才重新付费查询。60 天
+  cache_ttl_seconds: 5184000
+  # 服务方在没有记录时不返回空列表，而是在说明文字（摘要、搜索结果）里写这句话。返回里既没有记录列表、也找不到这句话，按协议异常处理（E6009）
+  no_record_text: "未发现"
+  # query_company 能查的维度：name 是模型看到的名字；tool 和 server 是 QCC 的工具和所在服务端；
+  # list_key 是返回里记录列表的键；single 为 true 的维度整个返回就是一条记录（没有列表，不写 list_key）；person 为 true 的维度要再给人名。
+  # 加维度先探一次真实返回再登记。history 服务端未授权，历史类工具不登记。
+  dimensions:
+    shareholders: {server: company, tool: get_shareholder_info, list_key: 股东信息, alt_list_keys: [合伙人信息], person: false, about: "直接股东和持股比例", price_cny: 2.00}
+    investments: {server: company, tool: get_external_investments, list_key: 对外投资信息, person: false, about: "对外投资的企业和持股比例", price_cny: 0.50}
+    actual_controller: {server: company, tool: get_actual_controller, list_key: 实际控制人信息, person: false, about: "穿透后的实际控制人和总持股比例", price_cny: 0.50}
+    key_personnel: {server: company, tool: get_key_personnel, list_key: 主要人员信息, person: false, about: "董监高等主要管理人员和职务", price_cny: 0.50}
+    person_related_companies: {server: executive, tool: get_executive_related_companies, list_key: 董监高-全部关联企业信息, person: true, about: "某位董监高在任何角色上关联的全部企业", price_cny: 0.50}
+    registration: {server: company, tool: get_company_registration_info, single: true, person: false, about: "工商登记信息：法定代表人、登记状态、成立日期、注册资本、实缴资本、企业类型、注册地址、经营范围、参保人数等", price_cny: 0.30}
+    dishonest: {server: risk, tool: get_dishonest_info, list_key: 失信信息, person: false, about: "当前失信被执行人记录", price_cny: 0.30}
+    judgment_debtor: {server: risk, tool: get_judgment_debtor_info, list_key: 被执行人信息, person: false, about: "当前被执行人记录", price_cny: 0.30}
+    administrative_penalty: {server: risk, tool: get_administrative_penalty, list_key: 行政处罚信息, person: false, about: "行政处罚记录", price_cny: 0.30}
+    judicial_documents: {server: risk, tool: get_judicial_documents, list_key: 裁判文书, person: false, about: "涉及的裁判文书（案号、案由、当事人、金额、裁判结果）", price_cny: 0.30}
+    court_notice: {server: risk, tool: get_court_notice, list_key: 法院公告, person: false, about: "当前有效的法院公告", price_cny: 0.30}
+    case_filing: {server: risk, tool: get_case_filing_info, list_key: 立案信息, person: false, about: "在册未结案的法院立案信息", price_cny: 0.30}
+    bidding: {server: operation, tool: get_bidding_info, list_key: 招投标信息, person: false, about: "招投标记录：项目、招采单位、中标单位、中标金额", price_cny: 0.30}

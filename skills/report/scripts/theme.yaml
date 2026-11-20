@@ -1,0 +1,47 @@
+# 报告主题：换字体、配色、字号、页边距只改这个文件，不改代码。
+# 配色沿用旧项目的核查报告：深蓝做标题和表头，不再往上加颜色。
+
+fonts:
+  # docx 用的字体：Word 在读者的机器上打开，用 Windows 和 macOS 上都有的中文字体
+  docx: "Microsoft YaHei"
+  # PDF 用的字体：按顺序找，哪个装了用哪个；中文字体必须至少装一个，渲染前会自检汉字不是方块
+  sans: ["Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei", "Microsoft YaHei", "SimHei", "Droid Sans Fallback", "sans-serif"]
+
+colors:
+  text: "#222833"     # 正文
+  brand: "#1f3a5f"    # 标题、表头、章节线
+  muted: "#5f6b7a"    # 次要信息、标签
+  faint: "#8b95a3"    # 页眉页脚
+  line: "#dde2e8"     # 表格线、分隔线
+  zebra: "#f4f6f9"    # 斑马纹底、标签栏底
+  link: "#1f5fbf"     # 超链接
+
+# 提示框的四种语气：字色和底色
+tones:
+  info: {fg: "#1f3a5f", bg: "#eaf0f8"}
+  ok:   {fg: "#1e7f4f", bg: "#e3f3ea"}
+  warn: {fg: "#9a6a1b", bg: "#fdf3e0"}
+  bad:  {fg: "#a63232", bg: "#fbe9e9"}
+
+# 正文里 [[类型|文字]] 标出的关键信息的底色，类型固定为这五种
+marks:
+  公司: "#cfe0fa"
+  地址: "#cdeed8"
+  人名: "#fde3b8"
+  时间: "#e0d4f4"
+  数字: "#fbd0d0"
+
+sizes_pt:
+  body: 9.5
+  h1: 13
+  h2: 11
+  h3: 10
+  title: 22
+  subtitle: 11
+  small: 8
+  footer: 7
+line_height: 1.65
+
+page:
+  size: A4
+  margin_mm: {top: 18, right: 17, bottom: 17, left: 17}
